@@ -1,0 +1,62 @@
+R DEPENDENCIES - ChromatinHD soybean multiome pipeline
+Used by: step-0_convert-rds-to-h5mu.R, step-1_bed-to-transcripts.R
+Status key: [ ] not installed   [x] installed (version noted)
+
+R itself
+  [x] r-base, r-base-dev        apt, R 4.5.2 (2025-10-31); gcc/gfortran 15.2
+
+System libraries (apt) needed to build R packages from source
+  [x] build-essential gfortran cmake libgit2-dev
+  [x] libhdf5-dev               hdf5r (needed by MuDataSeurat)
+  [x] libcurl4-openssl-dev libssl-dev libxml2-dev
+  [x] zlib1g-dev libbz2-dev liblzma-dev    Rsamtools / htslib
+  [x] libglpk-dev               igraph (Seurat dependency)
+  [x] libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev
+      libpng-dev libtiff-dev libjpeg-dev   graphics stack (ggplot2/ragg/textshaping)
+  [x] libgsl-dev                some Seurat/Signac dependencies
+
+CRAN packages (built from source)
+  [x] dplyr 1.2.1, readr 2.2.0, magrittr 2.0.5, stringr 1.6.0   step 1
+  [x] Seurat 5.6.0, SeuratObject 5.4.0  step 0 (needed to read the .rds)
+  [x] Signac 1.17.1                      step 0: the .rds almost certainly holds a
+                                          Signac ChromatinAssay ("links" in its name)
+  [x] hdf5r 1.3.16                       needed by MuDataSeurat
+  [x] remotes 2.5.0, BiocManager 1.30.27 installers
+
+Bioconductor packages (Signac dependencies)
+  [x] GenomicRanges 1.62.1, GenomeInfoDb 1.46.2, IRanges 2.44.0,
+      Rsamtools 2.26.0, S4Vectors 0.48.1, BiocGenerics 0.56.0,
+      sparseMatrixStats 1.22.0  (Bioconductor 3.22)
+
+GitHub packages
+  [x] MuDataSeurat 0.0.0.9000 (PMBio/MuDataSeurat)  provides WriteH5MU
+
+NOTES
+- scCustomize is NOT needed. step-0 originally loaded library(scCustomize), but
+  no scCustomize release (1.1.0 - 3.3.0) exports WriteH5MU; it comes from
+  MuDataSeurat. No other code in the repo uses scCustomize. Fixed in step-0.
+- MuDataSeurat is GitHub-only and unmaintained (last commit 2023-11-14).
+  Confirmed on our object: it fails on Seurat v5 Assay5 ("no slot of name
+  meta.features") and on WNN graphs with no assay.used. Signac ChromatinAssay
+  (ATAC) writes fine. step-0 works around both: rebuilds RNA as a v3 Assay
+  and drops @graphs.
+- WriteH5MU's choice of .X: if the assay has scale.data, .X = scale.data
+  (often only variable genes); if counts + data, .X = data. Our SCT assay has
+  scale.data for 3000 genes only, which writes an invalid modality, so step-0
+  drops SCT and writes the chosen expression as mod/RNA:
+    lognorm -> NormalizeData() of the joined raw RNA counts (40107 genes)
+    sct     -> SCT `data` layer (39816 genes)
+  Raw counts go to layers['counts'] in both cases.
+- Signac ChromatinAssays store the fragment-file path(s) and cell barcodes;
+  inspect them to settle potential_issues.txt item 5a.
+- Ubuntu also ships binaries (r-cran-seurat, r-cran-dplyr, r-cran-hdf5r, ...),
+  which would be faster to install, but we are building from CRAN source
+  to get current versions and avoid mixing apt and CRAN copies.
+
+INSTALL LOG (2026-10-14)
+- All packages built from source into /usr/local/lib/R/site-library
+  (CRAN cloud mirror, Bioconductor via BiocManager, MuDataSeurat via remotes).
+- Signac failed under install.packages(): its dependency sparseMatrixStats is
+  a Bioconductor package. Installing with BiocManager::install("Signac") works.
+- Verified: Seurat, Signac, MuDataSeurat, dplyr, readr, stringr, magrittr all
+  load with library().

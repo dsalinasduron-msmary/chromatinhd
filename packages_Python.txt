@@ -1,0 +1,38 @@
+PYTHON DEPENDENCIES - ChromatinHD soybean multiome pipeline
+Used by: step-2 .. step-5 (*.py)
+Status key: [ ] not installed   [x] installed (version noted)
+
+Interpreter
+  [ ] Python 3.12 via `uv` (project venv)
+      System Python is 3.14.4 - too new for some scientific wheels; mudata
+      needs >= 3.12.
+
+Direct dependencies
+  [ ] torch (CUDA 13 build)   all ChromatinHD steps. ~5 GB with CUDA libs.
+                              GPU: RTX 2070 Super (sm_75, 8 GB), driver 580 /
+                              CUDA 13.0 - sm_75 is still supported by CUDA 13.
+  [ ] chromatinhd==0.4.3      steps 2-5. Latest release (2025-04-14).
+                              SOURCE-ONLY (sdist with Cython extensions):
+                              needs gcc + Cython + numpy at build time.
+  [ ] polyptich               steps 4-5. ChromatinHD imports it at top level
+                              but only lists it under the "dev" extra, so it
+                              must be installed explicitly.
+  [ ] mudata, anndata         step 2 (read .h5mu)
+  [ ] pysam                   step 2 tabix indexing; ChromatinHD "sam" extra
+  [ ] pandas, numpy, matplotlib
+
+Pulled in by chromatinhd
+  scanpy, seaborn, xarray, zarr, diskcache, appdirs, pathlibfs, requests,
+  scikit-learn (via scanpy)
+
+NOTES
+- chromatinhd 0.4.3 predates numpy 2 / pandas 3 / torch 2.14. Pandas 3
+  (copy-on-write, new string dtype) is the most likely breakage; pin
+  pandas<3 if needed and run chromatinhd's own tests to check.
+- API check against the 0.4.3 source: everything the scripts call exists,
+  including chd.models.pred.model.multiscale.Models (re-exports `better`)
+  and RegionMultiWindow.extract_predictive_windows. potential_issues.txt 6c
+  ("docs name it extract_predictive_regions") does not apply to 0.4.3.
+- Disk: ~39 GB free on the workspace volume. Fragments/models for all genes
+  may need to live on another volume.
+- Pin exact versions in requirements/pyproject once installed.

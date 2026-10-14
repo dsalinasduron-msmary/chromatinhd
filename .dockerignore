@@ -1,0 +1,7 @@
+# Keep large data out of the build context
+*.rds
+*.h5mu
+*.h5ad
+*.tsv.gz
+*.tbi
+.git

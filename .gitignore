@@ -1,0 +1,7 @@
+# Large data files: keep out of git
+*.rds
+*.h5mu
+*.h5ad
+*.tsv.gz
+*.tbi
+test-data/
