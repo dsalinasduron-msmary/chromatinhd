@@ -8,9 +8,17 @@
 # segment_mean_coo when pooling fragment embeddings per cell x region, so
 # training fails with NameError. This gives those modules a pure-torch
 # replacement. Remove once chromatinhd fixes it.
+#
+# polyptich panels: chromatinhd's plot panels (e.g. models.pred.plot.Pileup and
+# Predictivity, used by step 5) subclass polyptich.grid.Panel and draw on
+# `self.ax`. In polyptich (0.0.9 - 0.0.20 checked) Panel is Ax2, which is itself
+# the matplotlib Axes placed in the figure, and sets `self.ax` to an Axes that is
+# never initialised -> AttributeError: 'Axes' object has no attribute 'xaxis'.
+# Make `ax` refer to the panel itself (what polyptich positions and iterates).
 import types
 
 import torch
+import polyptich.grid.panel
 import chromatinhd.models.pred.model.better
 import chromatinhd.models.pred.model.shared
 
@@ -33,3 +41,6 @@ def segment_mean_coo(src, index, dim_size):
 torch_scatter = types.SimpleNamespace(segment_sum_coo=segment_sum_coo, segment_mean_coo=segment_mean_coo)
 chromatinhd.models.pred.model.better.torch_scatter = torch_scatter
 chromatinhd.models.pred.model.shared.torch_scatter = torch_scatter
+
+
+polyptich.grid.panel.Ax2.ax = property(lambda self: self, lambda self, value: None)

@@ -21,11 +21,12 @@ Direct dependencies (requirements.in)
   [x] polyptich 0.0.20        ChromatinHD imports it at top level but only lists
                               it under the "dev" extra.
   [x] mudata 0.4.1, anndata 0.12.19 (pinned <0.13, see NOTES)
+  [x] zarr 2.18.7 (pinned <3, see NOTES; numcodecs 0.15.1)
   [x] pysam 0.24.1            tabix access (TSS selection, step 2)
   [x] pandas 2.3.3, numpy 2.5.3, matplotlib 3.11.2
 
 Pulled in by chromatinhd (selection)
-  scanpy 1.12.4, zarr 3.4.0, xarray 2026.9.0, seaborn, diskcache, appdirs,
+  scanpy 1.12.4, xarray 2026.9.0, seaborn, diskcache, appdirs,
   pathlibfs, requests, scikit-learn
 
 INSTALL LOG (2026-10-19)
@@ -36,6 +37,12 @@ INSTALL LOG (2026-10-19)
   (cuda-toolkit) and resolution fails. The PyPI torch 2.14.1 wheel is the
   same CUDA 13.0 build, so everything now comes from PyPI only.
 - uv cache cleaned afterwards.
+- 2026-10-19 (step 5): added zarr<3 to requirements.in, recompiled
+  (98 packages: zarr 3.4.0 -> 2.18.7, numcodecs 0.17.0 -> 0.15.1, + asciitree,
+  deprecated, fasteners; - donfig, google-crc32c, msgspec, pyyaml) and
+  `uv pip sync`-ed /opt/venv. Step-2 data written under zarr 3 still reads.
+  The sync also removed pytest (test-only, never in requirements); tests now
+  run with pytest from a scratch --target dir.
 
 TESTS (2026-10-19)
 - step-1_select-tss.py on the test subset: works; output identical to the
@@ -54,6 +61,9 @@ TESTS (2026-10-19)
       steps 3-5 `import chd_patches` after chromatinhd. With it: 16/17 pass.
     * diff model multiple models: TypeError dict.keys() (upstream bug); the
       diff model is not used by our scripts.
+  Rerun after the zarr<3 pin (2026-10-19, with `-p chd_patches`): 16 passed,
+  same 1 diff-model failure.
+- Steps 2-5 on the test subset with zarr 2.18.7: all work (see resume.txt).
 
 NOTES
 - anndata 0.13 lists X as a layer named None (adata.layers.keys() ->
@@ -63,5 +73,14 @@ NOTES
 - API check against the 0.4.3 source: everything the scripts call exists,
   including chd.models.pred.model.multiscale.Models (re-exports `better`)
   and RegionMultiWindow.extract_predictive_windows.
+- zarr 3: chromatinhd 0.4.3 sparse.py (RegionMultiWindow scores, step 5) is
+  written for zarr 2: zarr 3.4 rejects its 1-D chunks for a 2-D array, then
+  `len(Array)` fails. Pinned zarr<3. (chromatinhd 0.4.3 predates zarr 3's
+  widespread use.)
+- polyptich (all releases checked, 0.0.9-0.0.20): Panel = Ax2, whose `self.ax`
+  is never initialised, so chromatinhd's Pileup/Predictivity plots crash
+  ('Axes' object has no attribute 'xaxis'). FIXED in chd_patches.py: Ax2.ax
+  returns the panel itself. polyptich Figure.savefig imports IPython, so
+  step 5 saves with matplotlib's Figure.savefig instead.
 - select_tss_from_fragments breaks ties arbitrarily (unstable sort);
   step-1_select-tss.py uses its counts and breaks ties by transcript length.

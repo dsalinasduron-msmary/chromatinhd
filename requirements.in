@@ -8,6 +8,7 @@ chromatinhd[sam]==0.4.3   # sdist only: Cython build, needs gcc; [sam] = pysam
 polyptich   # imported by chromatinhd at top level but only listed in its "dev" extra
 mudata
 anndata<0.13   # 0.13 lists X as layers[None]; chromatinhd 0.4.3 Transcriptome.from_adata crashes on it
+zarr<3   # chromatinhd 0.4.3 sparse.py (step-5 RegionMultiWindow scores) is written for zarr 2; fails on zarr 3
 pandas
 numpy
 matplotlib
