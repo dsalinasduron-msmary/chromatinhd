@@ -53,6 +53,11 @@ rna_train_little = rna_train[:, take ]
 rna_train = rna_train_little  # ignore the larger dataset from now on
 transcripts = transcripts_little # ignore the larger dataset from now on
 
+# index names become dimension names in ChromatinHD results (e.g. get_prediction
+# fails on unnamed ones); match the transcriptome's "cell" / "gene"
+transcripts.index.name = "gene"
+adata_atac.obs.index.name = "cell"
+
 regions = chd.data.Regions.from_transcripts(
     transcripts,
     path=out_dir / "regions",

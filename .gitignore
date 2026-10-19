@@ -5,3 +5,5 @@
 *.tsv.gz
 *.tbi
 test-data/
+# Python bytecode (chd_patches import)
+__pycache__/
