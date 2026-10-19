@@ -5,7 +5,8 @@
 # Same steps as chd-soybean.def (Singularity/Apptainer; keep the two in sync), which is
 # what the production server builds (build-image.sh). Docker build: docker build -t chd-soybean .
 
-FROM ubuntu:26.04
+# ubuntu:26.04 as of 2026-10-19, pinned by digest so rebuilds start from the same base
+FROM ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
@@ -23,6 +24,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev \
         libpng-dev libtiff-dev libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# fail if apt gives another R than the one tested (Bioconductor 3.22 needs R 4.5)
+RUN R_VERSION=$(Rscript -e 'cat(as.character(getRversion()))') \
+    && if [ "$R_VERSION" != "4.5.2" ]; then echo "expected R 4.5.2, got R $R_VERSION" >&2; exit 1; fi
 
 # CRAN frozen at a dated snapshot so rebuilds get the same versions
 # (Seurat 5.6.0, Signac 1.17.1, ...); Bioconductor pinned to 3.22.
@@ -58,10 +63,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /usr/local/bin/uv
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH
-COPY requirements.txt /tmp/requirements.txt
-RUN uv venv /opt/venv --python 3.12 \
-    && uv pip install --no-cache -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+# /opt/requirements.txt stays in the image as a record of the pins it was built from
+COPY requirements.txt /opt/requirements.txt
+RUN uv venv /opt/venv --python 3.12.12 \
+    && uv pip install --no-cache -r /opt/requirements.txt
 
 WORKDIR /workspace
 CMD ["bash"]

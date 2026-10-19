@@ -9,7 +9,9 @@
 #   (--nv: use the GPU; --bind: make the data dirs visible)
 
 Bootstrap: docker
-From: ubuntu:26.04
+# ubuntu:26.04 as of 2026-10-19, pinned by digest so rebuilds start from the same base
+# (Apptainer/Singularity can't take a tag and a digest together)
+From: ubuntu@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944
 
 %files
 	requirements.txt /opt/requirements.txt
@@ -41,6 +43,9 @@ From: ubuntu:26.04
 		libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev \
 		libpng-dev libtiff-dev libjpeg-dev
 	rm -rf /var/lib/apt/lists/*
+	# fail if apt gives another R than the one tested (Bioconductor 3.22 needs R 4.5)
+	R_VERSION=$(Rscript -e 'cat(as.character(getRversion()))')
+	if [ "$R_VERSION" != "4.5.2" ]; then echo "expected R 4.5.2, got R $R_VERSION" >&2; exit 1; fi
 
 	# CRAN frozen at a dated snapshot so rebuilds get the same versions
 	# (Seurat 5.6.0, Signac 1.17.1, ...); Bioconductor pinned to 3.22.
@@ -84,13 +89,13 @@ EOF
 	# (compiled from requirements.in; torch 2.14.1, CUDA 13 build from PyPI, chromatinhd
 	# 0.4.3 built from source with the gcc installed above).
 	export UV_PYTHON_INSTALL_DIR=/opt/uv-python
-	uv venv /opt/venv --python 3.12
+	uv venv /opt/venv --python 3.12.12
 	VIRTUAL_ENV=/opt/venv uv pip install --no-cache -r /opt/requirements.txt
-	rm /opt/requirements.txt
+	# /opt/requirements.txt stays in the image as a record of the pins it was built from
 
 %test
-	Rscript -e 'suppressPackageStartupMessages({library(Seurat); library(Signac); library(MuDataSeurat); library(Rsamtools)})'
-	python -c 'import chromatinhd, mudata, pysam, torch, zarr; print("chromatinhd", chromatinhd.__version__, "torch", torch.__version__, "zarr", zarr.__version__)'
+	Rscript -e 'suppressPackageStartupMessages({library(Seurat); library(Signac); library(MuDataSeurat); library(Rsamtools)}); cat("R", as.character(getRversion()), "\n")'
+	python -c 'import chromatinhd, mudata, pysam, torch, zarr; import sys; print("python", sys.version.split()[0], "chromatinhd", chromatinhd.__version__, "torch", torch.__version__, "zarr", zarr.__version__)'
 
 %labels
 	Description ChromatinHD soybean multiome pipeline (R + Python environment)
