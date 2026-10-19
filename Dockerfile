@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
-# ChromatinHD soybean multiome pipeline - R environment (steps 0-1).
-# Python environment (steps 2-5) to be added.
-# Mirrors the setup recorded in packages_R.txt. For Singularity/Apptainer:
+# ChromatinHD soybean multiome pipeline: R environment (steps 0, 1a) and
+# Python environment (steps 1b-5).
+# Mirrors the setup recorded in packages_R.txt / packages_Python.txt.
+# For Singularity/Apptainer:
 #   docker build -t chd-soybean .
 #   singularity build chd-soybean.sif docker-daemon://chd-soybean:latest
 
@@ -50,6 +51,18 @@ missing <- pk[!vapply(pk, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing)) stop("failed to install: ", paste(missing, collapse = ", "))
 EOF
 RUN Rscript /tmp/install_packages.R && rm /tmp/install_packages.R
+
+# Python 3.12 (uv-managed) in /opt/venv with the exact pins of requirements.txt
+# (compiled from requirements.in; torch 2.14.1, CUDA 13 build from PyPI, chromatinhd 0.4.3
+# built from source with the gcc installed above).
+COPY --from=ghcr.io/astral-sh/uv:0.9.26 /uv /usr/local/bin/uv
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    VIRTUAL_ENV=/opt/venv \
+    PATH=/opt/venv/bin:$PATH
+COPY requirements.txt /tmp/requirements.txt
+RUN uv venv /opt/venv --python 3.12 \
+    && uv pip install --no-cache -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
 WORKDIR /workspace
 CMD ["bash"]

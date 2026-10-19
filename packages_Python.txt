@@ -1,38 +1,67 @@
 PYTHON DEPENDENCIES - ChromatinHD soybean multiome pipeline
-Used by: step-2 .. step-5 (*.py)
+Used by: step-1_select-tss.py, step-2 .. step-5 (*.py)
 Status key: [ ] not installed   [x] installed (version noted)
+Exact pins of everything (99 packages): requirements.txt, compiled from
+requirements.in (see its header for the command). Dockerfile installs
+requirements.txt the same way.
 
 Interpreter
-  [ ] Python 3.12 via `uv` (project venv)
-      System Python is 3.14.4 - too new for some scientific wheels; mudata
-      needs >= 3.12.
+  [x] Python 3.12.12 via uv 0.9.26 (uv-managed, UV_PYTHON_INSTALL_DIR=/opt/uv-python)
+      venv: /opt/venv (outside the workspace volume: lost with the container,
+      same path as in the Dockerfile). System Python is 3.14.4 - too new for
+      some scientific wheels; mudata/anndata need >= 3.12.
 
-Direct dependencies
-  [ ] torch (CUDA 13 build)   all ChromatinHD steps. ~5 GB with CUDA libs.
-                              GPU: RTX 2070 Super (sm_75, 8 GB), driver 580 /
-                              CUDA 13.0 - sm_75 is still supported by CUDA 13.
-  [ ] chromatinhd==0.4.3      steps 2-5. Latest release (2025-04-14).
-                              SOURCE-ONLY (sdist with Cython extensions):
-                              needs gcc + Cython + numpy at build time.
-  [ ] polyptich               steps 4-5. ChromatinHD imports it at top level
-                              but only lists it under the "dev" extra, so it
-                              must be installed explicitly.
-  [ ] mudata, anndata         step 2 (read .h5mu)
-  [ ] pysam                   step 2 tabix indexing; ChromatinHD "sam" extra
-  [ ] pandas, numpy, matplotlib
+Direct dependencies (requirements.in)
+  [x] torch 2.14.1            PyPI Linux wheel = CUDA 13.0 build (cuda-toolkit
+                              13.0.3, cuDNN 9.24); torch.version.cuda 13.0.
+                              GPU: RTX 2070 Super (sm_75, 8 GB), driver 580 -
+                              tested: cuda available, matmul on GPU works.
+  [x] chromatinhd 0.4.3       built from the sdist (Cython extensions, gcc 15.2);
+                              [sam] extra -> pysam. Compiled extensions import.
+  [x] polyptich 0.0.20        ChromatinHD imports it at top level but only lists
+                              it under the "dev" extra.
+  [x] mudata 0.4.1, anndata 0.12.19 (pinned <0.13, see NOTES)
+  [x] pysam 0.24.1            tabix access (TSS selection, step 2)
+  [x] pandas 2.3.3, numpy 2.5.3, matplotlib 3.11.2
 
-Pulled in by chromatinhd
-  scanpy, seaborn, xarray, zarr, diskcache, appdirs, pathlibfs, requests,
-  scikit-learn (via scanpy)
+Pulled in by chromatinhd (selection)
+  scanpy 1.12.4, zarr 3.4.0, xarray 2026.9.0, seaborn, diskcache, appdirs,
+  pathlibfs, requests, scikit-learn
+
+INSTALL LOG (2026-10-19)
+- uv venv /opt/venv --python 3.12; uv pip install -r requirements.txt.
+  Compiled with --exclude-newer 2026-10-05 (nothing newer than 2 weeks).
+- First tried torch 2.14.1+cu130 from download.pytorch.org/whl/cu130. That
+  index has no upload dates, so --exclude-newer rejects its packages
+  (cuda-toolkit) and resolution fails. The PyPI torch 2.14.1 wheel is the
+  same CUDA 13.0 build, so everything now comes from PyPI only.
+- uv cache cleaned afterwards.
+
+TESTS (2026-10-19)
+- step-1_select-tss.py on the test subset: works; output identical to the
+  earlier check that used chd's select_tss_from_fragments code in a stub.
+- mudata.read_h5mu opens both test .h5mu (RNA 870x500, ATAC 870x11960).
+- ChromatinHD 0.4.3's own test suite (from the sdist; conftest's
+  pkg_resources swapped for importlib.resources since setuptools no longer
+  ships it): 14 passed, 3 failed:
+    * pred model single + multiple (= what steps 3-5 use): NameError
+      'torch_scatter'. UPSTREAM BUG: commit 04086633 (2024-10-24, "remove
+      torch_scatter dependency") commented out `import torch_scatter` but
+      models/pred/model/better.py and shared.py still call
+      torch_scatter.segment_sum_coo / segment_mean_coo (still so on main).
+      Default multiscale.Models -> reduce="sum" -> crashes. FIXED in our repo:
+      chd_patches.py gives those modules a pure-torch replacement (index_add_);
+      steps 3-5 `import chd_patches` after chromatinhd. With it: 16/17 pass.
+    * diff model multiple models: TypeError dict.keys() (upstream bug); the
+      diff model is not used by our scripts.
 
 NOTES
-- chromatinhd 0.4.3 predates numpy 2 / pandas 3 / torch 2.14. Pandas 3
-  (copy-on-write, new string dtype) is the most likely breakage; pin
-  pandas<3 if needed and run chromatinhd's own tests to check.
+- anndata 0.13 lists X as a layer named None (adata.layers.keys() ->
+  ['counts', None]); chromatinhd 0.4.3 Transcriptome.from_adata iterates the
+  layers and crashes. 0.12.x does not. Pinned anndata<0.13, which also keeps
+  pandas < 3 (anndata 0.12 requires it).
 - API check against the 0.4.3 source: everything the scripts call exists,
   including chd.models.pred.model.multiscale.Models (re-exports `better`)
-  and RegionMultiWindow.extract_predictive_windows. potential_issues.txt 6c
-  ("docs name it extract_predictive_regions") does not apply to 0.4.3.
-- Disk: ~39 GB free on the workspace volume. Fragments/models for all genes
-  may need to live on another volume.
-- Pin exact versions in requirements/pyproject once installed.
+  and RegionMultiWindow.extract_predictive_windows.
+- select_tss_from_fragments breaks ties arbitrarily (unstable sort);
+  step-1_select-tss.py uses its counts and breaks ties by transcript length.

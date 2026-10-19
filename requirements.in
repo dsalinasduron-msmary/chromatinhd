@@ -1,0 +1,13 @@
+# Python dependencies of the ChromatinHD steps (step-1_select-tss.py, steps 2-5).
+# Compiled to requirements.txt (exact pins) with:
+#   uv pip compile requirements.in -o requirements.txt --python-version 3.12 \
+#     --exclude-newer 2026-10-05T00:00:00Z
+# (everything from PyPI, nothing released in the 2 weeks before compiling)
+torch==2.14.1   # the PyPI Linux wheel is the CUDA 13.0 build (cuda-toolkit 13.0.3)
+chromatinhd[sam]==0.4.3   # sdist only: Cython build, needs gcc; [sam] = pysam
+polyptich   # imported by chromatinhd at top level but only listed in its "dev" extra
+mudata
+anndata<0.13   # 0.13 lists X as layers[None]; chromatinhd 0.4.3 Transcriptome.from_adata crashes on it
+pandas
+numpy
+matplotlib

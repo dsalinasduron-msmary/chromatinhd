@@ -5,6 +5,7 @@ import polyptich
 import torch
 import anndata as ad
 import chromatinhd as chd
+import chd_patches  # fixes for chromatinhd 0.4.3 (torch_scatter); see chd_patches.py
 import mudata
 import pandas as pd
 
