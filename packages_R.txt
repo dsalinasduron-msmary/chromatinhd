@@ -14,6 +14,8 @@ System libraries (apt) needed to build R packages from source
   [x] libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev
       libpng-dev libtiff-dev libjpeg-dev   graphics stack (ggplot2/ragg/textshaping)
   [x] libgsl-dev                some Seurat/Signac dependencies
+  [x] libuv1-dev                fs (Seurat dependency); was already present here
+                                via nodejs, so missed until the first clean build
 
 CRAN packages (built from source)
   [x] dplyr 1.2.1, readr 2.2.0, magrittr 2.0.5, stringr 1.6.0   step 1
@@ -72,3 +74,10 @@ REINSTALL LOG (2026-10-19, fresh container)
 - make-test-subset.R also uses GenomicRanges and Rsamtools (indexTabix,
   scanTabix, bgzip) directly; both already installed as Signac dependencies,
   so no new packages and no htslib command-line tools needed.
+
+FIRST IMAGE BUILD (2026-10-19, production server)
+- Failed: fs could not find libuv ("uv.h: No such file or directory"), so Seurat
+  and then MuDataSeurat were not installed. This container had libuv1-dev from
+  nodejs, so the earlier reinstall did not catch it. Added libuv1-dev to the
+  .def and Dockerfile apt lists. A check of all -dev packages here against the
+  apt list's dependency closure found no other extras (only libnode-dev).

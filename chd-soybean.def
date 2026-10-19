@@ -39,7 +39,7 @@ From: ubuntu@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115f
 		libhdf5-dev \
 		libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
 		zlib1g-dev libbz2-dev liblzma-dev \
-		libglpk-dev libgsl-dev \
+		libglpk-dev libgsl-dev libuv1-dev \
 		libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev \
 		libpng-dev libtiff-dev libjpeg-dev
 	rm -rf /var/lib/apt/lists/*

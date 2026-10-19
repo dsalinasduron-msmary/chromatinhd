@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libhdf5-dev \
         libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
         zlib1g-dev libbz2-dev liblzma-dev \
-        libglpk-dev libgsl-dev \
+        libglpk-dev libgsl-dev libuv1-dev \
         libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev \
         libpng-dev libtiff-dev libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
