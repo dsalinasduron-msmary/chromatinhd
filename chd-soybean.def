@@ -1,0 +1,96 @@
+# ChromatinHD soybean multiome pipeline: R environment (steps 0, 1a) and
+# Python environment (steps 1b-5), for Singularity / Apptainer.
+# Same steps as the Dockerfile (keep the two in sync); mirrors the setup recorded in
+# packages_R.txt / packages_Python.txt.
+# Build: bash build-image.sh (or, from the repo dir, which has requirements.txt:
+#   singularity build --fakeroot chd-soybean.sif chd-soybean.def)
+# Run the pipeline from the repo dir (the scripts are not in the image):
+#   singularity exec --nv --bind /falafel chd-soybean.sif bash step-3.sh
+#   (--nv: use the GPU; --bind: make the data dirs visible)
+
+Bootstrap: docker
+From: ubuntu:26.04
+
+%files
+	requirements.txt /opt/requirements.txt
+
+%environment
+	export LANG=C.UTF-8 LC_ALL=C.UTF-8 TZ=Etc/UTC
+	export UV_PYTHON_INSTALL_DIR=/opt/uv-python
+	export VIRTUAL_ENV=/opt/venv
+	export PATH=/opt/venv/bin:$PATH
+	# use only the packages in the image, not ones from the (bind-mounted) home dir
+	# or the host environment
+	export R_LIBS_USER=/nonexistent
+	unset R_LIBS PYTHONPATH
+	export PYTHONNOUSERSITE=1
+
+%post
+	set -eu
+	export DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8 TZ=Etc/UTC
+
+	# R 4.5.2 from Ubuntu, plus system libraries needed to build packages from source
+	apt-get update
+	apt-get install -y --no-install-recommends \
+		r-base r-base-dev \
+		build-essential gfortran cmake git ca-certificates curl \
+		libhdf5-dev \
+		libcurl4-openssl-dev libssl-dev libxml2-dev libgit2-dev \
+		zlib1g-dev libbz2-dev liblzma-dev \
+		libglpk-dev libgsl-dev \
+		libfontconfig1-dev libfreetype-dev libharfbuzz-dev libfribidi-dev \
+		libpng-dev libtiff-dev libjpeg-dev
+	rm -rf /var/lib/apt/lists/*
+
+	# CRAN frozen at a dated snapshot so rebuilds get the same versions
+	# (Seurat 5.6.0, Signac 1.17.1, ...); Bioconductor pinned to 3.22.
+	CRAN_SNAPSHOT=https://packagemanager.posit.co/cran/2026-10-14
+	BIOC_VERSION=3.22
+	MUDATASEURAT_REF=e34e9082a3da029e6b21f7a93a193a2cc0d69245
+	cat > /tmp/install_packages.R <<EOF
+# at most 8 cores for compiling (the build may run on a shared login node)
+options(repos = c(CRAN = "${CRAN_SNAPSHOT}"), Ncpus = min(8, parallel::detectCores()))
+install.packages(c("remotes", "BiocManager"))
+BiocManager::install(version = "${BIOC_VERSION}", update = FALSE, ask = FALSE)
+# BiocManager resolves both CRAN and Bioconductor dependencies
+# (Signac needs Bioconductor's sparseMatrixStats).
+BiocManager::install(c(
+    "dplyr", "readr", "magrittr", "stringr",
+    "hdf5r", "Seurat", "SeuratObject", "Signac",
+    "GenomicRanges", "GenomeInfoDb", "IRanges", "Rsamtools",
+    "S4Vectors", "BiocGenerics", "sparseMatrixStats"
+), update = FALSE, ask = FALSE)
+# WriteH5MU comes from MuDataSeurat (GitHub only), not scCustomize (not needed)
+remotes::install_github("PMBio/MuDataSeurat@${MUDATASEURAT_REF}", upgrade = "never")
+pk <- c("dplyr", "readr", "magrittr", "stringr", "hdf5r", "Seurat",
+        "SeuratObject", "Signac", "MuDataSeurat", "Rsamtools", "GenomicRanges")
+missing <- pk[!vapply(pk, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing)) stop("failed to install: ", paste(missing, collapse = ", "))
+EOF
+	Rscript /tmp/install_packages.R
+	rm /tmp/install_packages.R
+
+	# uv 0.9.26 (the Dockerfile copies it from ghcr.io/astral-sh/uv:0.9.26), checksum-verified
+	UV_VERSION=0.9.26
+	UV_SHA256=30ccbf0a66dc8727a02b0e245c583ee970bdafecf3a443c1686e1b30ec4939e8
+	curl -fsSL -o /tmp/uv.tar.gz \
+		https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz
+	echo "${UV_SHA256}  /tmp/uv.tar.gz" | sha256sum -c -
+	tar -xzf /tmp/uv.tar.gz -C /tmp
+	install -m 755 /tmp/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/uv
+	rm -rf /tmp/uv.tar.gz /tmp/uv-x86_64-unknown-linux-gnu
+
+	# Python 3.12 (uv-managed) in /opt/venv with the exact pins of requirements.txt
+	# (compiled from requirements.in; torch 2.14.1, CUDA 13 build from PyPI, chromatinhd
+	# 0.4.3 built from source with the gcc installed above).
+	export UV_PYTHON_INSTALL_DIR=/opt/uv-python
+	uv venv /opt/venv --python 3.12
+	VIRTUAL_ENV=/opt/venv uv pip install --no-cache -r /opt/requirements.txt
+	rm /opt/requirements.txt
+
+%test
+	Rscript -e 'suppressPackageStartupMessages({library(Seurat); library(Signac); library(MuDataSeurat); library(Rsamtools)})'
+	python -c 'import chromatinhd, mudata, pysam, torch, zarr; print("chromatinhd", chromatinhd.__version__, "torch", torch.__version__, "zarr", zarr.__version__)'
+
+%labels
+	Description ChromatinHD soybean multiome pipeline (R + Python environment)

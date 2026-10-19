@@ -87,16 +87,39 @@ windows of 50–500 bp one at a time and records the drop in prediction quality.
 - **Python 3.12** with chromatinhd 0.4.3, torch 2.14.1 (CUDA 13 build) (steps 1b–5).
   Exact pins: `requirements.txt` (compiled from `requirements.in`; recompile command in
   its header). Notes: `packages_Python.txt`.
-- `Dockerfile` builds both. For the production server (Singularity/Apptainer):
+- `chd-soybean.def` (Singularity/Apptainer) builds both; `Dockerfile` has the same
+  steps for Docker (keep the two in sync). Neither has been built yet.
 
-  ```bash
-  docker build -t chd-soybean .
-  singularity build chd-soybean.sif docker-daemon://chd-soybean:latest
-  singularity exec --nv chd-soybean.sif bash step-3.sh   # --nv: use the GPU
-  ```
+### Running on the production server (Singularity/Apptainer)
 
-  The CUDA 13 build of torch needs an NVIDIA driver ≥ 580 on the host. Without a GPU,
-  ChromatinHD falls back to the CPU (steps 3–5; not tested, expect it to be much slower).
+Build the image once (needs internet access; ~30–60 min, mostly compiling R packages):
+
+```bash
+bash build-image.sh
+```
+
+It writes `$WORK/chd-soybean.sif` (`WORK` from `paths.sh`) and keeps its temporary
+build files (~15–20 GB at the peak) and download cache under `WORK` instead of `/tmp`
+and your home directory. It builds with `--fakeroot`; if the admins have not enabled
+that, set `BUILD_OPTS=""` in the script and run it with `sudo`. The build ends with a
+test that loads the R and Python packages.
+
+Then run each step from the repo directory (the scripts are not in the image):
+
+```bash
+singularity exec --nv --bind /falafel /falafel/cornbert/chd-soybean.sif bash step-0.sh
+singularity exec --nv --bind /falafel /falafel/cornbert/chd-soybean.sif bash step-1.sh
+# ... through step-5.sh
+```
+
+- `--nv` gives the container the GPU (steps 3–5).
+- `--bind` makes directories outside your home visible inside the container: add every
+  directory `paths.sh` refers to (e.g. `--bind /falafel,/cluster`) unless the site
+  already mounts them.
+- GPU: the CUDA 13 build of torch supports compute capability 7.5 and newer (T4,
+  RTX 20xx and later, A100, H100, ...), not P100 / V100, and needs an NVIDIA driver
+  ≥ 580 on the host (check with `nvidia-smi`). Without a GPU, ChromatinHD falls back to
+  the CPU (not tested; expect it to be much slower).
 
 ### chromatinhd 0.4.3 workarounds
 

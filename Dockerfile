@@ -2,9 +2,8 @@
 # ChromatinHD soybean multiome pipeline: R environment (steps 0, 1a) and
 # Python environment (steps 1b-5).
 # Mirrors the setup recorded in packages_R.txt / packages_Python.txt.
-# For Singularity/Apptainer:
-#   docker build -t chd-soybean .
-#   singularity build chd-soybean.sif docker-daemon://chd-soybean:latest
+# Same steps as chd-soybean.def (Singularity/Apptainer; keep the two in sync), which is
+# what the production server builds (build-image.sh). Docker build: docker build -t chd-soybean .
 
 FROM ubuntu:26.04
 
