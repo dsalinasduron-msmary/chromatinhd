@@ -27,6 +27,9 @@ regions_oi = list( take.intersection(region_oi_df["GENE"]) )
 
 # Note: reset is set to false to enable batching, we batch to avoid "too many files open" error
 models = chd.models.pred.model.multiscale.Models(pt + "/" + "models_" + model_label, reset=False)
+# train on the transcriptome's "X" layer (lognorm or SCT from step 0), not raw "counts";
+# without this the model uses whichever layer happens to be listed first
+models.model_params = dict(layer="X")
 
 models.train_models(
     fragments=fragments,

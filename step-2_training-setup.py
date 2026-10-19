@@ -1,31 +1,26 @@
 # based off of https://chromatinhd.org/quickstart/1_data/#transcriptomics
-import torch
-import anndata as ad
+# Step 2: build the ChromatinHD data (regions, fragments, transcriptome, folds).
+# Usage: python step-2_training-setup.py <multiome.h5mu> <transcripts.csv> <fragments.tsv.gz> <out dir> <window bp>
+#   multiome.h5mu:    paired RNA/ATAC from step 0 (expression to model in mod/RNA .X)
+#   transcripts.csv:  one TSS per gene from step 1
+#                     (chrom,start,end,transcript,strand,ensembl_gene_id,tss,symbol,transcript_biotype)
+#   fragments.tsv.gz: ATAC fragments, bgzipped and tabix-indexed (.tbi)
+#   out dir:          gets regions/, fragments/, transcriptome/, folds/5x1/ (input to steps 3-5;
+#                     can use a lot of space)
+#   window bp:        region = TSS +/- window (e.g. 10000)
+import sys
+import pathlib
+
 import chromatinhd as chd
 import mudata
 import pandas as pd
 
-################################
-# FILES PATHS  & OTHER OPTIONS #
-# CHANGE AS NEEDED             #
-################################
-
-pt = "/falafel/cornbert" # path to put code artifacts (including output models, can consume a lot of space)
-
-multiomic_file = "/falafel/cornbert/integrated.multiome.rds.h5mu" # paired atac/rna data
-
-# transcription start site spec: chrom,start,end,transcript,strand,ensembl_gene_id,tss,symbol,transcript_biotype
-transcripts_file = "/falafel/cornbert/transcripts.csv" 
-
-fragments_file = "/falafel/pgrp_singlecell/soybean_nodule_multiome-redo/atac_fragments.tsv.gz"
-
-model_label = "test" # will be added as suffix to artifacts
-window_size = 10_000
-
-# set to true generate index if fragments does not have one [error will tip you off if you have to do this]
-if False:
-    import pysam
-    pysam.tabix_index(fragments_file, preset = "bed")
+if len(sys.argv) != 6:
+    sys.exit("usage: python step-2_training-setup.py <multiome.h5mu> <transcripts.csv> <fragments.tsv.gz> <out dir> <window bp>")
+multiomic_file, transcripts_file, fragments_file, out_dir = sys.argv[1:5]
+window_size = int(sys.argv[5])
+out_dir = pathlib.Path(out_dir)
+out_dir.mkdir(parents=True, exist_ok=True)
 
 #########################
 # BEGIN DATA PROCESSING #
@@ -60,7 +55,7 @@ transcripts = transcripts_little # ignore the larger dataset from now on
 
 regions = chd.data.Regions.from_transcripts(
     transcripts,
-    path=(pt + "/" + "regions_" + model_label),
+    path=out_dir / "regions",
     window=[-window_size, window_size]
 )
 
@@ -68,10 +63,14 @@ fragments = chd.data.Fragments.from_fragments_tsv(
     fragments_file,
     regions,
     obs=adata_atac.obs,
-    path= (pt + "/" + "fragments_" + model_label),
+    path=out_dir / "fragments",
 )
 fragments.create_regionxcell_indptr()
 
-folds = chd.data.folds.Folds(pt + "/" + "folds_" + model_label  + "/5x1").sample_cells(fragments, 5, 1)
+folds = chd.data.folds.Folds(out_dir / "folds" / "5x1").sample_cells(fragments, 5, 1)
 
-transcriptome = chd.data.Transcriptome.from_adata(rna_train, path=(pt + "/" + "transcriptome_" + model_label) )
+# the transcriptome stores .X as layer "X" (lognorm or SCT, from step 0) and the raw
+# counts as layer "counts"; step 3 trains on "X"
+transcriptome = chd.data.Transcriptome.from_adata(rna_train, path=out_dir / "transcriptome")
+
+print(f"{len(take)} genes, {fragments.n_cells} cells, {fragments.coordinates.shape[0]} fragments -> {out_dir}")
