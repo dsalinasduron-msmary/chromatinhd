@@ -1,6 +1,7 @@
 # Convert the integrated Seurat multiome object to .h5mu for ChromatinHD (step 2).
 # Usage: Rscript step-0_convert-rds-to-h5mu.R <in.rds> <out.h5mu> <lognorm|sct>
-#   lognorm: RNA modality = raw RNA counts, log-normalised here (NormalizeData)
+#   lognorm: RNA modality = raw RNA counts, log-normalised here (NormalizeData),
+#            or the RNA data layer if the object already has one (test subset)
 #   sct:     RNA modality = the object's SCTransform-normalised data
 # Either way the expression ChromatinHD uses ends up in mod/RNA .X; raw counts
 # are kept in layers['counts'].
@@ -24,8 +25,15 @@ integrated.multiome.rds <- readRDS(in.rds)
 # modality as a v3 Assay holding counts + log-normalised data (WriteH5MU
 # then writes data to .X and counts to layers['counts']).
 if (method == "lognorm") {
-	rna.counts <- LayerData(JoinLayers(integrated.multiome.rds[["RNA"]]), layer="counts")
-	rna.assay <- NormalizeData(CreateAssayObject(counts=rna.counts), verbose=FALSE)
+	rna <- JoinLayers(integrated.multiome.rds[["RNA"]])
+	rna.assay <- CreateAssayObject(counts=LayerData(rna, layer="counts"))
+	# use an existing data layer (the gene-subset test data, normalised over all genes
+	# by make-test-subset.R); otherwise normalise here
+	if ("data" %in% Layers(rna)) {
+		rna.assay <- SetAssayData(rna.assay, layer="data", new.data=LayerData(rna, layer="data"))
+	} else {
+		rna.assay <- NormalizeData(rna.assay, verbose=FALSE)
+	}
 } else {
 	sct <- integrated.multiome.rds[["SCT"]]
 	rna.assay <- CreateAssayObject(counts=LayerData(sct, layer="counts"))

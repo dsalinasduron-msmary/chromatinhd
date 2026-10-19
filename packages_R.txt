@@ -60,3 +60,15 @@ INSTALL LOG (2026-10-14)
   a Bioconductor package. Installing with BiocManager::install("Signac") works.
 - Verified: Seurat, Signac, MuDataSeurat, dplyr, readr, stringr, magrittr all
   load with library().
+
+REINSTALL LOG (2026-10-19, fresh container)
+- apt step and R package script taken verbatim from the Dockerfile (CRAN
+  snapshot packagemanager.posit.co/cran/2026-10-14, Bioconductor 3.22,
+  MuDataSeurat e34e908), run with sudo into /usr/local/lib/R/site-library.
+  Finished without errors; all versions identical to the list above.
+  This is effectively a test of the Dockerfile's R part outside Docker.
+- Smoke test: step-0 (lognorm) on the test subset gives an .h5mu identical
+  to the 2026-10-14 output (RNA/ATAC X, obs/var indices).
+- make-test-subset.R also uses GenomicRanges and Rsamtools (indexTabix,
+  scanTabix, bgzip) directly; both already installed as Signac dependencies,
+  so no new packages and no htslib command-line tools needed.
