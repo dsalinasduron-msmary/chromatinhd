@@ -3,9 +3,9 @@
 # data available. Predictivity analysis (step 5) examines the effect of hiding some data from the model.
 # Scores every model trained in MODELS (one pass; fast enough that no batching is needed).
 set -euo pipefail
+cd "$(dirname "$0")" # run from the repo dir (scripts, chd_patches.py, paths.sh)
+source ./paths.sh # RDS, FRAGMENTS, METHOD, WINDOW and the input/output paths
 
-DATA=/falafel/cornbert/window-10kb # step-2 output (same as DATA in step-3.sh)
-MODELS=$DATA/models # step-3 output (same as MODELS in step-3.sh)
 OUT=$DATA/correlations # gets correlations_per-fold.tsv, correlations.tsv, correlation_plot.png
 
 python step-4_correlation-analysis.py $DATA $MODELS $OUT

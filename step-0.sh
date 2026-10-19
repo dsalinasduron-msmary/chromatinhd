@@ -1,8 +1,7 @@
+# Step 0: Seurat/Signac .rds -> .h5mu (RNA expression per METHOD, ATAC peaks).
 set -euo pipefail
-RDS=/home/dsalinas/libault-group-latest-rds/integrated_multiome_annotated_minatacFALSE_15unknown_res04.rds
-H5MU=/home/dsalinas/libault_multiome/integrated_multiome_annotated_minatacFALSE_15unknown_res04.h5mu
-# Expression written to the RNA modality:
-#   lognorm = log-normalise the raw RNA counts
-#   sct     = use the object's SCTransform-normalised data
-METHOD=lognorm
+cd "$(dirname "$0")" # run from the repo dir (scripts, chd_patches.py, paths.sh)
+source ./paths.sh # RDS, FRAGMENTS, METHOD, WINDOW and the input/output paths
+
+mkdir -p $H5MU_DIR
 Rscript step-0_convert-rds-to-h5mu.R $RDS $H5MU $METHOD

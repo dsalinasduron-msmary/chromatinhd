@@ -6,7 +6,8 @@
 #                     (chrom,start,end,transcript,strand,ensembl_gene_id,tss,symbol,transcript_biotype)
 #   fragments.tsv.gz: ATAC fragments, bgzipped and tabix-indexed (.tbi)
 #   out dir:          gets regions/, fragments/, transcriptome/, folds/5x1/ (input to steps 3-5;
-#                     can use a lot of space)
+#                     can use a lot of space) and genes.tsv (column GENE: every gene set up,
+#                     the default gene list for step 3)
 #   window bp:        region = TSS +/- window (e.g. 10000)
 import sys
 import pathlib
@@ -77,5 +78,8 @@ folds = chd.data.folds.Folds(out_dir / "folds" / "5x1").sample_cells(fragments, 
 # the transcriptome stores .X as layer "X" (lognorm or SCT, from step 0) and the raw
 # counts as layer "counts"; step 3 trains on "X"
 transcriptome = chd.data.Transcriptome.from_adata(rna_train, path=out_dir / "transcriptome")
+
+# every gene set up here, in step 3's gene-list format
+pd.DataFrame({"GENE": take}).to_csv(out_dir / "genes.tsv", sep="\t", index=False)
 
 print(f"{len(take)} genes, {fragments.n_cells} cells, {fragments.coordinates.shape[0]} fragments -> {out_dir}")

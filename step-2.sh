@@ -1,11 +1,7 @@
+# Step 2: ChromatinHD data for steps 3-5 (regions, fragments, transcriptome, folds,
+# genes.tsv) in DATA (can use a lot of space).
 set -euo pipefail
-# step 0 output (expression to model in mod/RNA .X)
-H5MU=/home/dsalinas/libault_multiome/integrated_multiome_annotated_minatacFALSE_15unknown_res04.h5mu
-# step 1 output
-TRANSCRIPTS=/falafel/cornbert/transcripts.csv
-# bgzipped and tabix-indexed (.tbi)
-FRAGMENTS=/falafel/pgrp_singlecell/soybean_nodule_multiome-redo/atac_fragments.tsv.gz
-# ChromatinHD data for steps 3-5 (can use a lot of space); name it after the setup
-OUT=/falafel/cornbert/window-10kb
-WINDOW=10000
-python step-2_training-setup.py $H5MU $TRANSCRIPTS $FRAGMENTS $OUT $WINDOW
+cd "$(dirname "$0")" # run from the repo dir (scripts, chd_patches.py, paths.sh)
+source ./paths.sh # RDS, FRAGMENTS, METHOD, WINDOW and the input/output paths
+
+python step-2_training-setup.py $H5MU $TRANSCRIPTS $FRAGMENTS $DATA $WINDOW

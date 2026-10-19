@@ -1,10 +1,11 @@
+# Step 3: train one model per gene and fold into MODELS (can use a lot of space).
 set -euo pipefail
-# ChromatinHD data from step 2
-DATA=/falafel/cornbert/window-10kb
-# genes to train, one per line under a GENE header (GLYMA_XXGXXXXXX names)
-GENE_FILE=test-genes.tsv
-# trained models (can use a lot of space)
-MODELS=$DATA/models
+cd "$(dirname "$0")" # run from the repo dir (scripts, chd_patches.py, paths.sh)
+source ./paths.sh # RDS, FRAGMENTS, METHOD, WINDOW and the input/output paths
+
+# genes to train, one per line under a GENE header (GLYMA_XXGXXXXXX names);
+# step 2 writes all its genes to $DATA/genes.tsv - point this at a shorter list to train fewer
+GENE_FILE=$DATA/genes.tsv
 # genes per run of the Python script (batches avoid a "too many open files" error)
 BATCH_SIZE=500
 BATCH_FILE=$(mktemp --suffix=.tsv)
