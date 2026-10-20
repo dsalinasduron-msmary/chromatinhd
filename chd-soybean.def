@@ -94,6 +94,10 @@ EOF
 	# /opt/requirements.txt stays in the image as a record of the pins it was built from
 
 %test
+	# the build runs this as root with HOME=/root inside the finished, read-only image;
+	# chromatinhd and matplotlib create cache dirs in HOME on import, so use a writable one
+	# (when running the pipeline, HOME is your own, writable home dir)
+	export HOME=$(mktemp -d)
 	Rscript -e 'suppressPackageStartupMessages({library(Seurat); library(Signac); library(MuDataSeurat); library(Rsamtools)}); cat("R", as.character(getRversion()), "\n")'
 	python -c 'import chromatinhd, mudata, pysam, torch, zarr; import sys; print("python", sys.version.split()[0], "chromatinhd", chromatinhd.__version__, "torch", torch.__version__, "zarr", zarr.__version__)'
 
