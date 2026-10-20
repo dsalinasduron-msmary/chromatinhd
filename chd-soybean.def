@@ -99,7 +99,7 @@ EOF
 	# (when running the pipeline, HOME is your own, writable home dir)
 	export HOME=$(mktemp -d)
 	Rscript -e 'suppressPackageStartupMessages({library(Seurat); library(Signac); library(MuDataSeurat); library(Rsamtools)}); cat("R", as.character(getRversion()), "\n")'
-	python -c 'import chromatinhd, mudata, pysam, torch, zarr; import sys; print("python", sys.version.split()[0], "chromatinhd", chromatinhd.__version__, "torch", torch.__version__, "zarr", zarr.__version__)'
+	python -c 'import chromatinhd, mudata, pysam, torch, zarr; import sys; from importlib.metadata import version; print("python", sys.version.split()[0], "chromatinhd", version("chromatinhd"), "torch", torch.__version__, "zarr", zarr.__version__)'
 
 %labels
 	Description ChromatinHD soybean multiome pipeline (R + Python environment)
