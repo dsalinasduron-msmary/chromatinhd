@@ -88,7 +88,9 @@ windows of 50–500 bp one at a time and records the drop in prediction quality.
   Exact pins: `requirements.txt` (compiled from `requirements.in`; recompile command in
   its header). Notes: `packages_Python.txt`.
 - `chd-soybean.def` (Singularity/Apptainer) builds both; `Dockerfile` has the same
-  steps for Docker (keep the two in sync). Neither has been built yet.
+  steps for Docker (keep the two in sync). The Singularity image
+  was built and tested on the production server (2026-10-20); the Dockerfile has not been
+  built.
 
 ### Running on the production server (Singularity/Apptainer)
 
