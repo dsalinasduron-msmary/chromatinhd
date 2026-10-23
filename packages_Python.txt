@@ -82,5 +82,9 @@ NOTES
   ('Axes' object has no attribute 'xaxis'). FIXED in chd_patches.py: Ax2.ax
   returns the panel itself. polyptich Figure.savefig imports IPython, so
   step 5 saves with matplotlib's Figure.savefig instead.
-- select_tss_from_fragments breaks ties arbitrarily (unstable sort);
-  step-1_select-tss.py uses its counts and breaks ties by transcript length.
+- select_tss_from_fragments breaks ties arbitrarily (unstable sort), and passes
+  pysam a negative start for a TSS < 100 bp from the contig start (pysam:
+  "start out of range", which prints the end by mistake). Since 2026-10-23
+  step-1_select-tss.py counts itself (same fetch, start clipped at 0, as chd's
+  step-2 fragment loader does), breaks ties by transcript length, and no longer
+  imports chromatinhd. Output on the full data identical to chd's code.

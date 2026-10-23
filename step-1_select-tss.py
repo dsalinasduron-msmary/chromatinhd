@@ -1,6 +1,6 @@
 # Step 1b: pick one TSS per gene from the candidate transcripts of
 # step-1_annotation-to-transcripts.R, using the ATAC fragments
-# (chd.data.regions.select_tss_from_fragments: the candidate with the most
+# (as chd.data.regions.select_tss_from_fragments: the candidate with the most
 # fragments within -100..+100 bp of its TSS; ties go to the longest transcript),
 # and write transcripts.csv for step 2.
 # Usage: python step-1_select-tss.py <candidates.csv> <fragments.tsv.gz> <out transcripts.csv>
@@ -9,13 +9,19 @@ import sys
 
 import pandas as pd
 import pysam
-from chromatinhd.data.regions import select_tss_from_fragments
+import tqdm
 
 if len(sys.argv) != 4:
     sys.exit("usage: python step-1_select-tss.py <candidates.csv> <fragments.tsv.gz> <out transcripts.csv>")
 candidates_file, fragments_file, transcripts_file = sys.argv[1:]
 
 candidates = pd.read_csv(candidates_file)
+
+# scaffold genes: dropped by step 2 anyway
+scaffold = candidates["chrom"].str.contains("scaffold")
+if scaffold.any():
+    print(f"dropping {candidates.loc[scaffold, 'ensembl_gene_id'].nunique()} genes on scaffold contigs")
+    candidates = candidates.loc[~scaffold].reset_index(drop=True)
 
 # pysam can't fetch from contigs missing in the fragments file (e.g. chloroplast)
 contigs = set(pysam.TabixFile(fragments_file).contigs)
@@ -25,11 +31,17 @@ if missing.any():
           f"{', '.join(sorted(candidates.loc[missing, 'chrom'].unique()))}")
     candidates = candidates.loc[~missing].reset_index(drop=True)
 
-# select_tss_from_fragments counts the fragments of every candidate (it adds
-# n_fragments to `candidates`), but breaks ties arbitrarily (unstable sort).
-# Pick the same way, breaking ties by the longest transcript, then transcript id.
-select_tss_from_fragments(candidates, fragments_file)
-assert "n_fragments" in candidates.columns
+# Count fragments within -100..+100 bp of each candidate TSS with the same pysam
+# fetch as chd's select_tss_from_fragments (chromatinhd 0.4.3), but with the window
+# clipped at the contig start: chd passes a negative start for a TSS < 100 bp in,
+# which pysam rejects (chd's own fragment loader for step 2 clips the same way).
+# chd also breaks ties arbitrarily (unstable sort), so pick here: most fragments,
+# then the longest transcript, then transcript id.
+fragments_tabix = pysam.TabixFile(fragments_file)
+candidates["n_fragments"] = [
+    sum(1 for _ in fragments_tabix.fetch(chrom, max(tss - 100, 0), tss + 100))
+    for chrom, tss in tqdm.tqdm(zip(candidates["chrom"], candidates["tss"]), total=candidates.shape[0])
+]
 candidates["length"] = candidates["end"] - candidates["start"] + 1
 transcripts = (candidates
     .sort_values(["n_fragments", "length", "transcript"], ascending=[False, False, True], kind="stable")
