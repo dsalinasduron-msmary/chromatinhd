@@ -35,19 +35,26 @@ models = chd.models.pred.model.multiscale.Models(models_dir, reset=False)
 model_params = dict(layer="X")
 
 # Fragment encoder bin widths. chd's default spline encoder bins the region at 100, 200,
-# 500, 1000, 2000 and 5000 bp, and each width must divide the window (TSS +/- WINDOW):
-# otherwise the last, partial bin indexes past the encoder weights (CUDA device-side
-# assert) or into the next width's weights (silently wrong). So the defaults only fit
-# multiples of 10 kb. For other windows, replace each default width by the largest
-# width that divides the window and is not larger (e.g. 3 kb: 2000 -> 1500, 5000 -> 3000).
-# The encoder is saved with each model, so steps 4-5 use the same widths.
+# 500, 1000, 2000 and 5000 bp = the 10 kb half-window divided by 2, 5, 10, 20, 50, 100
+# (a 1-2-5 series). Each width must divide the window (TSS +/- WINDOW): otherwise the
+# last, partial bin indexes past the encoder weights (CUDA device-side assert) or into
+# the next width's weights (silently wrong), so the default widths only fit multiples
+# of 10 kb. Use the same divisors of the actual half-window instead (3 kb: 30, 60, 150,
+# 300, 600, 1500 bp): always six distinct widths that divide the window, in the same
+# ratios and with the same number of encoder weights as the default; needs WINDOW to be
+# a multiple of 100. The encoder is saved with each model, so steps 4-5 use the same widths.
 default_binwidths = (100, 200, 500, 1000, 2000, 5000)
+binwidth_divisors = (100, 50, 20, 10, 5, 2)
 window = [int(w) for w in fragments.regions.window]
-span = math.gcd(-window[0], window[1])  # widths must divide both ends of the window
-binwidths = tuple(sorted({max(d for d in range(1, b + 1) if span % d == 0) for b in default_binwidths}))
+half_window = math.gcd(-window[0], window[1])  # widths must divide both ends of the window
+if half_window % 100:
+    sys.exit(f"window {window[0]}..{window[1]} bp: WINDOW must be a multiple of 100 bp "
+             f"(encoder bin widths = WINDOW / {binwidth_divisors})")
+binwidths = tuple(half_window // k for k in binwidth_divisors)
 if binwidths != default_binwidths:
-    print(f"WARNING: window {window[0]}..{window[1]} bp is not a whole number of the default "
-          f"encoder bins {default_binwidths}; using custom bin widths {binwidths} bp", file=sys.stderr)
+    print(f"WARNING: window {window[0]}..{window[1]} bp is not +/- 10 kb; using custom encoder "
+          f"bin widths {binwidths} bp (WINDOW / {binwidth_divisors}) instead of chromatinhd's "
+          f"default {default_binwidths}", file=sys.stderr)
     model_params["encoder_kwargs"] = dict(binwidths=binwidths)
 else:
     print(f"encoder bin widths: {binwidths} bp (chromatinhd default)")

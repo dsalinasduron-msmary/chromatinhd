@@ -14,9 +14,9 @@ FRAGMENTS=/falafel/cornbert/atac_fragments.tsv.gz
 #   lognorm = log-normalise the raw RNA counts
 #   sct     = use the object's SCTransform-normalised data
 METHOD=sct
-# region modelled per gene: TSS +/- WINDOW bp (step 2). Not a multiple of 10000 ->
-# step 3 warns and uses custom encoder bin widths that fit the window
-WINDOW=3000
+# region modelled per gene: TSS +/- WINDOW bp (step 2); a multiple of 100. Step 3 sets the
+# encoder bin widths to WINDOW / (100, 50, 20, 10, 5, 2) and warns if WINDOW is not 10000
+WINDOW=5000
 
 # --- output locations ---
 H5MU_DIR=/falafel/cornbert/chromatinhd_artifacts # step 0 output
