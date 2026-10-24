@@ -4,21 +4,23 @@
 
 # --- inputs ---
 # Seurat/Signac object (RNA, SCT, ATAC with the gene annotation)
-RDS=/home/dsalinas/libault-group-latest-rds/integrated_multiome_annotated_minatacFALSE_15unknown_res04.rds
+RDS=/home/dsalinas/libault-group-latest-rds/integrated_multiome_annotated_links_doublet2p4_cluster_reordered.rds
+
 # ATAC fragments, bgzipped and tabix-indexed (.tbi next to it)
-FRAGMENTS=/falafel/pgrp_singlecell/soybean_nodule_multiome-redo/atac_fragments.tsv.gz
+FRAGMENTS=/falafel/cornbert/atac_fragments.tsv.gz
 
 # --- choices ---
 # expression written to the RNA modality in step 0:
 #   lognorm = log-normalise the raw RNA counts
 #   sct     = use the object's SCTransform-normalised data
-METHOD=lognorm
-# region modelled per gene: TSS +/- WINDOW bp (step 2)
-WINDOW=10000
+METHOD=sct
+# region modelled per gene: TSS +/- WINDOW bp (step 2). Not a multiple of 10000 ->
+# step 3 warns and uses custom encoder bin widths that fit the window
+WINDOW=3000
 
 # --- output locations ---
-H5MU_DIR=/home/dsalinas/libault_multiome # step 0 output
-WORK=/falafel/cornbert # steps 1-5 output (can use a lot of space)
+H5MU_DIR=/falafel/cornbert/chromatinhd_artifacts # step 0 output
+WORK=/falafel/cornbert/chromatinhd_claude_artifacts/work # steps 1-5 output (can use a lot of space)
 
 # --- derived names (no need to edit): METHOD and WINDOW are part of the names so
 # runs with other settings do not overwrite each other ---

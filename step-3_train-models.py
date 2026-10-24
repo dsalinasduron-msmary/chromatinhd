@@ -5,6 +5,7 @@
 #   genes.tsv:  the genes to train models for, column GENE (GLYMA_XXGXXXXXX names)
 #   models dir: models are added here (not reset, so step-3.sh can train in batches;
 #               genes/folds already trained are skipped); can use a lot of space
+import math
 import sys
 
 import chromatinhd as chd
@@ -31,7 +32,26 @@ if missing:
 models = chd.models.pred.model.multiscale.Models(models_dir, reset=False)
 # train on the transcriptome's "X" layer (lognorm or SCT from step 0), not raw "counts";
 # without this the model uses whichever layer happens to be listed first
-models.model_params = dict(layer="X")
+model_params = dict(layer="X")
+
+# Fragment encoder bin widths. chd's default spline encoder bins the region at 100, 200,
+# 500, 1000, 2000 and 5000 bp, and each width must divide the window (TSS +/- WINDOW):
+# otherwise the last, partial bin indexes past the encoder weights (CUDA device-side
+# assert) or into the next width's weights (silently wrong). So the defaults only fit
+# multiples of 10 kb. For other windows, replace each default width by the largest
+# width that divides the window and is not larger (e.g. 3 kb: 2000 -> 1500, 5000 -> 3000).
+# The encoder is saved with each model, so steps 4-5 use the same widths.
+default_binwidths = (100, 200, 500, 1000, 2000, 5000)
+window = [int(w) for w in fragments.regions.window]
+span = math.gcd(-window[0], window[1])  # widths must divide both ends of the window
+binwidths = tuple(sorted({max(d for d in range(1, b + 1) if span % d == 0) for b in default_binwidths}))
+if binwidths != default_binwidths:
+    print(f"WARNING: window {window[0]}..{window[1]} bp is not a whole number of the default "
+          f"encoder bins {default_binwidths}; using custom bin widths {binwidths} bp", file=sys.stderr)
+    model_params["encoder_kwargs"] = dict(binwidths=binwidths)
+else:
+    print(f"encoder bin widths: {binwidths} bp (chromatinhd default)")
+models.model_params = model_params
 
 models.train_models(
     fragments=fragments,

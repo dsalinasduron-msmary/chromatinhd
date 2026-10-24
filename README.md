@@ -33,7 +33,10 @@ All wrappers source `paths.sh`; edit it, not the wrappers, for anything shared:
   (`atac_fragments.tsv.gz.tbi` next to it; make one with `tabix -p bed <file>`).
 - `METHOD`: expression to model. `lognorm` = log-normalised raw RNA counts;
   `sct` = the object's SCTransform data.
-- `WINDOW`: region per gene = TSS ± `WINDOW` bp (default 10000).
+- `WINDOW`: region per gene = TSS ± `WINDOW` bp (default 10000). ChromatinHD's default
+  fragment encoder bins (100–5000 bp) only fit multiples of 10 kb; for other windows step 3
+  prints a warning and uses custom bin widths that divide the window (e.g. 3000 →
+  100, 200, 500, 1000, 1500, 3000 bp).
 - `H5MU_DIR`, `WORK`: where outputs go.
 
 Output names are derived from these (`<rds name>_<METHOD>.h5mu`,
