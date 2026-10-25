@@ -65,6 +65,10 @@ TESTS (2026-10-19)
   same 1 diff-model failure.
 - Steps 2-5 on the test subset with zarr 2.18.7: all work (see resume.txt).
 
+REINSTALL (2026-10-25, fresh container, no GPU here): uv 0.9.26 (sha256-checked, as in
+  the .def), /opt/venv Python 3.12.12, uv pip install -r requirements.txt: torch
+  2.14.1+cu130, chromatinhd 0.4.3 (cuda not available in this container -> CPU tests).
+
 NOTES
 - anndata 0.13 lists X as a layer named None (adata.layers.keys() ->
   ['counts', None]); chromatinhd 0.4.3 Transcriptome.from_adata iterates the
@@ -88,3 +92,10 @@ NOTES
   step-1_select-tss.py counts itself (same fetch, start clipped at 0, as chd's
   step-2 fragment loader does), breaks ties by transcript length, and no longer
   imports chromatinhd. Output on the full data identical to chd's code.
+- Fragments.get_cache keeps every region's slice of fragments/coordinates.dat (a
+  memmap view = one open file each) forever -> "Too many open files" once a process
+  passes ~1000 regions (server soft limit 1024; step 4 on 2994 genes, 2026-10-25).
+  FIXED in chd_patches.py (2026-10-25): keep only the current region's entry. Tested on
+  the test subset (300 models, 60 genes, CPU): open fds +60 -> +1; step 4 under
+  `ulimit -n 64` crashes unpatched and finishes patched with byte-identical
+  correlations; step 3 trains under the same limit.

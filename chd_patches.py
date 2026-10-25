@@ -15,12 +15,22 @@
 # the matplotlib Axes placed in the figure, and sets `self.ax` to an Axes that is
 # never initialised -> AttributeError: 'Axes' object has no attribute 'xaxis'.
 # Make `ax` refer to the panel itself (what polyptich positions and iterates).
+#
+# Fragments.get_cache (data/fragments/fragments.py) keeps every region's slice of
+# fragments/coordinates.dat in a dict on the Fragments object, forever. Each slice is a
+# view into a memory map, so each region keeps one file descriptor open: a process that
+# goes through more regions than the open-file limit (often 1024) fails with "OSError:
+# [Errno 24] Too many open files" (step 4 on 2994 genes; why step-3.sh trains in batches).
+# All users go region by region (train_models, get_prediction in step 4,
+# RegionMultiWindow.score) and only reuse the cache across the folds of one region, so
+# keep only the current region's entry.
 import types
 
 import torch
 import polyptich.grid.panel
 import chromatinhd.models.pred.model.better
 import chromatinhd.models.pred.model.shared
+import chromatinhd.data.fragments.fragments
 
 
 def segment_sum_coo(src, index, dim_size):
@@ -44,3 +54,16 @@ chromatinhd.models.pred.model.shared.torch_scatter = torch_scatter
 
 
 polyptich.grid.panel.Ax2.ax = property(lambda self: self, lambda self, value: None)
+
+
+_fragments_get_cache = chromatinhd.data.fragments.fragments.Fragments.get_cache
+
+
+def get_cache(self, region_oi):
+    """Fragments.get_cache, keeping only the most recent region (frees its open file)."""
+    if self._single_region_cache and region_oi not in self._single_region_cache:
+        self._single_region_cache = None
+    return _fragments_get_cache(self, region_oi)
+
+
+chromatinhd.data.fragments.fragments.Fragments.get_cache = get_cache

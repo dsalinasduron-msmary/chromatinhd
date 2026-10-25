@@ -9,7 +9,7 @@ import math
 import sys
 
 import chromatinhd as chd
-import chd_patches  # fixes for chromatinhd 0.4.3 (torch_scatter); see chd_patches.py
+import chd_patches  # fixes for chromatinhd 0.4.3 (torch_scatter, fragment cache); see chd_patches.py
 import pandas as pd
 
 if len(sys.argv) != 4:

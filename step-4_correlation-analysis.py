@@ -19,7 +19,7 @@ import sys
 import pathlib
 
 import chromatinhd as chd
-import chd_patches  # fixes for chromatinhd 0.4.3 (torch_scatter); see chd_patches.py
+import chd_patches  # fixes for chromatinhd 0.4.3 (torch_scatter, fragment cache); see chd_patches.py
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
